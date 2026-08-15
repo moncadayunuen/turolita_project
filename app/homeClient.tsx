@@ -35,6 +35,32 @@ const formatTime = (seconds = 0) =>
 const compact = (value = 0) =>
   new Intl.NumberFormat("es-MX", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 
+type DeezerPreviewResponse = { preview?: string };
+
+const getFreshPreview = (trackId: number) => new Promise<string>((resolve, reject) => {
+  const callbackName = `turolitaPreview_${trackId}_${Date.now()}`;
+  const script = document.createElement("script");
+  const timeout = window.setTimeout(() => finish(new Error("Deezer tardó demasiado en responder")), 10000);
+  const callbacks = window as unknown as Record<string, ((data: DeezerPreviewResponse) => void) | undefined>;
+
+  const cleanup = () => {
+    window.clearTimeout(timeout);
+    script.remove();
+    delete callbacks[callbackName];
+  };
+
+  const finish = (error?: Error, preview?: string) => {
+    cleanup();
+    if (error || !preview) reject(error || new Error("Esta canción no tiene muestra disponible"));
+    else resolve(preview);
+  };
+
+  callbacks[callbackName] = (data) => finish(undefined, data.preview);
+  script.onerror = () => finish(new Error("No fue posible conectar con Deezer"));
+  script.src = `https://api.deezer.com/track/${trackId}?output=jsonp&callback=${callbackName}`;
+  document.head.appendChild(script);
+});
+
 function WaveMark() {
   return (
     <span className="wave-mark" aria-hidden="true">
@@ -95,15 +121,36 @@ function Player() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(0.8);
+  const [previewState, setPreviewState] = useState({ trackId: 0, source: "", error: "" });
   const { currentTrack, isPlaying, favoriteTracks, toggleFavorite, togglePlay, playNext, playPrevious } = useMusicStore();
   const isFavorite = favoriteTracks.some((track) => track.id === currentTrack?.id);
+  const audioSource = previewState.trackId === currentTrack?.id ? previewState.source : "";
+  const audioError = previewState.trackId === currentTrack?.id ? previewState.error : "";
+
+  useEffect(() => {
+    if (!currentTrack) return;
+    let cancelled = false;
+
+    getFreshPreview(currentTrack.id)
+      .then((preview) => {
+        if (!cancelled) {
+          setPreviewState({ trackId: currentTrack.id, source: preview, error: "" });
+          setProgress(0);
+        }
+      })
+      .catch((error: Error) => {
+        if (!cancelled) setPreviewState({ trackId: currentTrack.id, source: "", error: error.message });
+      });
+
+    return () => { cancelled = true; };
+  }, [currentTrack]);
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !audioSource) return;
     if (isPlaying) audio.play().catch(() => undefined);
     else audio.pause();
-  }, [isPlaying, currentTrack]);
+  }, [isPlaying, audioSource]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
@@ -115,13 +162,13 @@ function Player() {
     <div className="player-shell">
       <audio
         ref={audioRef}
-        src={currentTrack.preview}
+        src={audioSource}
         onTimeUpdate={(event) => setProgress(event.currentTarget.currentTime)}
         onEnded={playNext}
       />
       <div className="now-playing">
         <img src={currentTrack.album.cover_medium} alt="" />
-        <span><strong>{currentTrack.title_short || currentTrack.title}</strong><small>{currentTrack.artist.name}</small></span>
+        <span><strong>{currentTrack.title_short || currentTrack.title}</strong><small>{audioError || currentTrack.artist.name}</small></span>
         <button className={`icon-button heart ${isFavorite ? "selected" : ""}`} onClick={() => toggleFavorite(currentTrack)} aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}><FiHeart /></button>
       </div>
       <div className="player-center">
