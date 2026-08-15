@@ -179,6 +179,7 @@ export const HomeClient = ({ tracks, albums, artists, artistTracks }: HomeClient
     [query, tracks],
   );
   const featured = tracks[0];
+  const featuredIsPlaying = Boolean(featured && currentTrack?.id === featured.id && isPlaying);
   const cards = tracks.filter((track, index, items) => items.findIndex((item) => item.album.id === track.album.id) === index).slice(0, 6);
 
   useEffect(() => {
@@ -202,6 +203,11 @@ export const HomeClient = ({ tracks, albums, artists, artistTracks }: HomeClient
     if (!heroTrack) return;
     if (currentTrack?.id === heroTrack.id) togglePlay();
     else playTrack(heroTrack, normalizedDetailTracks);
+  };
+  const handleFeaturedPlayback = () => {
+    if (!featured) return;
+    if (currentTrack?.id === featured.id) togglePlay();
+    else playTrack(featured, tracks);
   };
   const openHome = () => { setDetail(null); setView("home"); };
   const openLibrary = () => { setDetail(null); setView("library"); setQuery(""); };
@@ -389,7 +395,7 @@ export const HomeClient = ({ tracks, albums, artists, artistTracks }: HomeClient
               <section className="hero">
                 <img src={featured.album.cover_big || featured.album.cover_medium} alt="" className="hero-art" />
                 <div className="hero-overlay" />
-                <div className="hero-copy"><span className="eyebrow">#1 en México</span><h1>El hit que todo<br />el mundo trae.</h1><p>{featured.title} · {featured.artist.name}</p><div className="hero-actions"><button className="primary-action" onClick={() => playTrack(featured, tracks)}><FiPlay /> Reproducir</button><button className="secondary-action" onClick={() => openAlbum(featured.album)}>Ver álbum</button></div></div>
+                <div className="hero-copy"><span className="eyebrow">#1 en México</span><h1>El hit que todo<br />el mundo trae.</h1><p>{featured.title} · {featured.artist.name}</p><div className="hero-actions"><button className="primary-action" onClick={handleFeaturedPlayback} aria-label={featuredIsPlaying ? `Pausar ${featured.title}` : `Reproducir ${featured.title}`}>{featuredIsPlaying ? <FiPause /> : <FiPlay />} {featuredIsPlaying ? "Pausar" : "Reproducir"}</button><button className="secondary-action" onClick={() => openAlbum(featured.album)}>Ver álbum</button></div></div>
               </section>
             )}
 
