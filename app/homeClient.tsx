@@ -156,6 +156,26 @@ function Player() {
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
 
+  useEffect(() => {
+    if (!currentTrack) return;
+
+    const handlePlaybackShortcut = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || event.repeat) return;
+
+      const target = event.target;
+      if (
+        target instanceof HTMLElement
+        && (target.matches("input, textarea, select") || target.isContentEditable)
+      ) return;
+
+      event.preventDefault();
+      togglePlay();
+    };
+
+    window.addEventListener("keydown", handlePlaybackShortcut);
+    return () => window.removeEventListener("keydown", handlePlaybackShortcut);
+  }, [currentTrack, togglePlay]);
+
   if (!currentTrack) return null;
 
   return (
@@ -175,7 +195,7 @@ function Player() {
         <div className="player-controls">
           <button aria-label="Aleatorio"><FiShuffle /></button>
           <button onClick={playPrevious} aria-label="Anterior"><FiSkipBack /></button>
-          <button className="main-play" onClick={togglePlay} aria-label={isPlaying ? "Pausar" : "Reproducir"}>
+          <button className={`main-play ${isPlaying ? "is-playing" : ""}`} onClick={togglePlay} aria-label={isPlaying ? "Pausar" : "Reproducir"} aria-keyshortcuts="Space">
             {isPlaying ? <FiPause /> : <FiPlay />}
           </button>
           <button onClick={playNext} aria-label="Siguiente"><FiSkipForward /></button>
