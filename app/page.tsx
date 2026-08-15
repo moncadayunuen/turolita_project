@@ -1,21 +1,18 @@
 import HttpClient from "@/app/utils/httpClient";
-import {HomeClient} from "./homeClient";
+import { HomeClient } from "./homeClient";
+import type { Track } from "@/app/types";
+
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
-    let tracks = [];
+  let tracks: Track[] = [];
 
-    try {
-        const response = await HttpClient.get("/chart/0/tracks");
-        if(!response)
-            return console.log("Error en la petición.");
-        tracks = response.data.data || [];
-    } catch(error) {
-        console.log("Hubo un problema: ",error);
-    }
+  try {
+    const response = await HttpClient.get("/chart/0/tracks?limit=20");
+    tracks = response.data.data || [];
+  } catch (error) {
+    console.error("No fue posible cargar los hits de Deezer", error);
+  }
 
-    return (
-        <div className="flex flex-col flex-1 items-center justify-center min-h-screen bg-zinc-50 font-sans dark:bg-black text-slate-800 dark:text-white">
-            <HomeClient tracks={tracks} />
-        </div>
-    );
+  return <HomeClient tracks={tracks} />;
 }
