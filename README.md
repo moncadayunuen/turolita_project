@@ -55,15 +55,9 @@ Los favoritos y playlists se guardan bajo la clave `turolita-library` de `localS
 
 ## Integración con Deezer
 
-La página principal obtiene el ranking desde Deezer en el servidor. Las consultas de álbumes y artistas pasan por el Route Handler interno:
+La compilación obtiene desde Deezer el ranking, los álbumes destacados y la información de sus artistas. Estos datos se incorporan a la exportación estática para que la aplicación pueda funcionar en GitHub Pages sin un servidor propio.
 
-```text
-GET /api/deezer?type=album&id={albumId}
-GET /api/deezer?type=artist&id={artistId}
-GET /api/deezer?type=artist&id={artistId}&view=top
-```
-
-El endpoint interno valida los recursos permitidos antes de realizar la solicitud. La reproducción utiliza el campo `preview` de Deezer, por lo que cada muestra tiene una duración aproximada de 30 segundos.
+Un workflow programado vuelve a compilar el sitio diariamente para actualizar este contenido. La reproducción utiliza el campo `preview` de Deezer, por lo que cada muestra tiene una duración aproximada de 30 segundos.
 
 ## Ejecutar el proyecto
 
@@ -100,7 +94,6 @@ npm run lint   # Revisión de código
 
 ```text
 app/
-├── api/deezer/route.ts          # Proxy y validación para Deezer
 ├── store/useFavoriteSongs.ts    # Estado global, favoritos y playlists
 ├── types/index.tsx              # Tipos de canciones, álbumes y artistas
 ├── utils/httpClient.tsx         # Cliente HTTP de Deezer
@@ -109,6 +102,10 @@ app/
 ├── layout.tsx                   # Layout y metadata
 └── page.tsx                     # Carga inicial del ranking
 ```
+
+## Publicación
+
+El workflow `.github/workflows/deploy-pages.yml` genera una exportación estática y la publica automáticamente en GitHub Pages después de cada cambio enviado a `main`. También se ejecuta una vez al día para refrescar el ranking de Deezer.
 
 ## Próximos pasos
 

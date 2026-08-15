@@ -156,11 +156,17 @@ function Player() {
   );
 }
 
-export const HomeClient = ({ tracks }: { tracks: Track[] }) => {
+type HomeClientProps = {
+  tracks: Track[];
+  albums: Record<number, Album>;
+  artists: Record<number, ArtistDetail>;
+  artistTracks: Record<number, Track[]>;
+};
+
+export const HomeClient = ({ tracks, albums, artists, artistTracks }: HomeClientProps) => {
   const [view, setView] = useState<"home" | "library" | "playlist">("home");
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState<Detail>(null);
-  const [loading, setLoading] = useState(false);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
@@ -179,24 +185,12 @@ export const HomeClient = ({ tracks }: { tracks: Track[] }) => {
     void useMusicStore.persist.rehydrate();
   }, []);
 
-  const openAlbum = async (album: Album) => {
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/deezer?type=album&id=${album.id}`);
-      const item = await response.json();
-      setDetail({ type: "album", item });
-    } finally { setLoading(false); }
+  const openAlbum = (album: Album) => {
+    setDetail({ type: "album", item: albums[album.id] || album });
   };
 
-  const openArtist = async (track: Track) => {
-    setLoading(true);
-    try {
-      const [artistResponse, tracksResponse] = await Promise.all([
-        fetch(`/api/deezer?type=artist&id=${track.artist.id}`),
-        fetch(`/api/deezer?type=artist&id=${track.artist.id}&view=top`),
-      ]);
-      setDetail({ type: "artist", item: await artistResponse.json(), tracks: (await tracksResponse.json()).data || [] });
-    } finally { setLoading(false); }
+  const openArtist = (track: Track) => {
+    setDetail({ type: "artist", item: artists[track.artist.id] || track.artist, tracks: artistTracks[track.artist.id] || [track] });
   };
 
   const detailTracks = detail?.type === "album" ? detail.item.tracks?.data || [] : detail?.type === "artist" ? detail.tracks : [];
@@ -302,9 +296,7 @@ export const HomeClient = ({ tracks }: { tracks: Track[] }) => {
           <button className="profile-pill"><span className="avatar">YM</span><span>Yunuen</span></button>
         </header>
 
-        {loading ? (
-          <div className="loading-view"><WaveMark /><p>Preparando la música…</p></div>
-        ) : detail ? (
+        {detail ? (
           <section className="detail-view">
             <div className={`detail-hero ${detail.type}`}>
               <img src={detail.type === "album" ? detail.item.cover_big : detail.item.picture_big} alt="" />
